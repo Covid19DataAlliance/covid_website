@@ -1,12 +1,86 @@
 
 var dataSelect = document.getElementById("dropdownMenuButton");
+//var selectedDate = document.getElementById("datepicker")._flatpickr;
 var selectedVariable = null;
-var mapVariable = "popultn";
-
+var mapVariable = "confirmed_10k";
 mapboxgl.accessToken = 'pk.eyJ1IjoibW9ycmlzb25nZSIsImEiOiJja2NjZHE5cjkwM3FmMnFvZ3RnNW4wdDBiIn0.UEv4J8Uc6Mc40JlT9Bfsyw';
+var map = new mapboxgl.Map({
+  container: 'map',
+  hash: true,
+  style: "mapbox://styles/mapbox/streets-v11",
+  center: [-95.52, 39.94],
+  zoom: 4,
+  debug: 1
+});
+map.addControl(new mapboxgl.NavigationControl());
+map.addControl(new mapboxgl.FullscreenControl());
+
+
+/*
+d3.csv("/data/csse_covid_19_daily_reports/05-20-2020.csv").then(function(data) {
+  console.log(data[0]);
+});
+*/
+
+const myInput = document.querySelector("#dateselecter");
+console.log(myInput);
+const fp = flatpickr(myInput, {
+  minDate: "2020-03-20",
+  maxDate: "2020-05-25",
+  defaultDate: "2020-05-05",
+  dateFormat: "m-d-Y",
+  onReady: function (selectDates,dateStr){
+    d3.csv("/data/csse_covid_19_daily_reports/05-05-2020.csv").then(function(data) {
+      parseCovidData(data);
+    });
+    updateMap();
+  },
+  onChange: function (selectDates,dateStr){
+    var filePath = "/data/csse_covid_19_daily_reports/";
+    var finalPath = filePath + dateStr + ".csv";
+    console.log(finalPath)
+    d3.csv(finalPath).then(function(data) {
+      parseCovidData(data);
+    });
+    updateMap();
+  }
+});
+
+
+function parseCovidData(data){
+  var confirmed_dict = {};
+  var death_dict = {};
+  for (i=0;i<data.length;i++){
+    if (data[i].Country_Region == "US"){
+      data[i].FIPS = parseInt(data[i].FIPS,10);
+      confirmed_dict[data[i].FIPS] = data[i].Confirmed;
+      death_dict[data[i].FIPS] = data[i].Deaths;
+    }
+  }
+
+  for (i=0;i<counties.features.length;i++){
+    var fips = counties.features[i].properties.FIPS;
+    if (!(fips in confirmed_dict)){
+      counties.features[i].properties.confirmed = 0;
+      counties.features[i].properties.deaths = 0;
+      counties.features[i].properties.confirmed_10k = 0;
+      counties.features[i].properties.deaths_10k = 0;
+    } else{
+      counties.features[i].properties.confirmed = confirmed_dict[fips];
+      counties.features[i].properties.deaths = death_dict[fips];
+      counties.features[i].properties.confirmed_10k = confirmed_dict[fips] / counties.features[i].properties.popultn * 10000;
+      counties.features[i].properties.deaths_10k = death_dict[fips] / counties.features[i].properties.popultn * 10000;
+    }
+
+  }
+
+
+};
 
 
 console.log(counties.features[0].properties.FIPS)
+console.log(counties.features[0].properties.GEOID)
+console.log("hello world")
 
 //End Blank Map
 
@@ -170,10 +244,22 @@ function updateMap(){
   });
   map.addControl(new mapboxgl.NavigationControl());
   map.addControl(new mapboxgl.FullscreenControl());
+  map.on ("style.load", function (){
 
-
-  map.on('style.load', function() {
     map.flyTo(view1);
+    /*
+    if (changeDate){
+      map.removeSource('us_counties');
+    };
+
+
+    if (!selectVar){
+      map.addSource('us_counties', {
+        'type': 'geojson',
+        'data': counties
+      });
+    }
+    */
     map.addSource('us_counties', {
       'type': 'geojson',
       'data': counties
@@ -191,7 +277,11 @@ function updateMap(){
     var stop2 = breaks[2];
     var stop3 = breaks[3];
     var stop4 = breaks[4];
-
+    /*
+    if(changeDate || selectVar){
+      map.removeLayer('countiesLayer')
+    };
+    */
     map.addLayer({
       'id': 'countiesLayer',
       'type': 'fill',
@@ -203,49 +293,36 @@ function updateMap(){
         'fill-color': {
           'property': mapVariable,
           'stops': [
-            [breaks[1], "#FEEDDE"],
-            [breaks[2], "#FDBE85"],
-            [breaks[3], "#FD8D3C"],
-            [breaks[4], "#E6550D"]
+            [breaks[1], "#FFA500"],
+            [breaks[2], "#FF8C00"],
+            [breaks[3], "#FF0000"],
+            [breaks[4], "#B22222"]
           ]
         },
         'fill-outline-color': 'white',
         'fill-opacity': 0.9
       }
     });
-    stop1 = Math.round(stop1 * 100) / 100
-    stop2 = Math.round(stop2 * 100) / 100
-    stop3 = Math.round(stop3 * 100) / 100
-    stop4 = Math.round(stop4 * 100) / 100
-    var strBrk1 = stop1.toString()
-    var strBrk2 = stop2.toString()
-    var strBrk3 = stop3.toString()
-    var strBrk4 = stop4.toString()
+    stop1 = Math.round(stop1 * 100) / 100;
+    stop2 = Math.round(stop2 * 100) / 100;
+    stop3 = Math.round(stop3 * 100) / 100;
+    stop4 = Math.round(stop4 * 100) / 100;
+    var strBrk1 = stop1.toString();
+    var strBrk2 = stop2.toString();
+    var strBrk3 = stop3.toString();
+    var strBrk4 = stop4.toString();
 
     var layers = [strBrk1,strBrk2,strBrk3,strBrk4];
-    var colors = ["#FEEDDE","#FDBE85","#FD8D3C","#E6550D"];
+    var colors = ["#FFA500","#FF8C00","#FF0000","#B22222"];
 
 
-    for (i = 0; i < layers.length; i++) {
-      var layer = layers[i];
-      var color = colors[i];
-      var item = document.createElement('div');
-      var key = document.createElement('span');
-      key.className = 'legend-key';
-      key.style.backgroundColor = color;
+    var myobj = document.getElementById("legend")
+    if (myobj){
+      myobj.remove();
+    };
 
-      var value = document.createElement('span');
-      value.innerHTML = layer;
-      item.appendChild(key);
-      item.appendChild(value);
-      legend.appendChild(item);
-    }
-
-
+     createLegend(layers,colors);
   });
-
-
-
   var popup = new mapboxgl.Popup({
     closeButton: false,
     closeOnClick: false
@@ -266,33 +343,66 @@ function updateMap(){
   }
 
   map.on('click', function(e) {
-    identifyFeatures(e, 'countiesLayer', ["NAME", "popultn"])
+    identifyFeatures(e, 'countiesLayer', ["NAME", "confirmed", "deaths", "confirmed_10k", "deaths_10k"])
   });
 
   map.on('mousemove', function(e) {
-    identifyFeatures(e, 'countiesLayer', ["NAME", "popultn"])
+    identifyFeatures(e, 'countiesLayer', ["NAME", "confirmed", "deaths", "confirmed_10k", "deaths_10k"])
   });
+
 
 }
 
 
 
+function createLegend(layers,colors){
+  var legendContainer = document.getElementById("legend-box");
+  var legend = document.createElement('div');
+  legend.id = 'legend';
+  for (i = 0; i < layers.length; i++) {
+    var layer = layers[i];
+    var color = colors[i];
+    var item = document.createElement('div');
+    var key = document.createElement('span');
+    key.className = 'legend-key';
+    key.style.backgroundColor = color;
+
+    var value = document.createElement('span');
+    value.innerHTML = layer;
+    item.appendChild(key);
+    item.appendChild(value);
+    legend.appendChild(item);
+  }
+  legendContainer.appendChild(legend);
+
+}
 
 
 function selectVariable(e) {
   dataSelect.innerText = e.innerText;
   selectedVariable = e.innerText;
-  if (selectedVariable == "Population"){
-    mapVariable = "popultn";
-  } else if (selectedVariable == "Percent Male") {
-    mapVariable = "prcnt_m";
-  } else if (selectedVariable == "Percent Female") {
-    mapVariable = "prcnt_f";
-  } else if (selectedVariable == "Percent Black") {
-    mapVariable = "prcnt_bc";
+  if (selectedVariable == "Confirmed Cases"){
+    mapVariable = "confirmed";
+  } else if (selectedVariable == "Deaths") {
+    mapVariable = "deaths";
+  } else if (selectedVariable == "Confirmed Cases Per 10k People") {
+    mapVariable = "confirmed_10k";
+  } else if (selectedVariable == "Deaths Per 10k People") {
+    mapVariable = "deaths_10k";
   }
   updateMap();
 }
+
+/*
+function (selectDates,dateStr){
+  filePath = "/data/csse_covid_19_daily_reports/";
+  finalPath = filePath + dateStr
+  d3.csv("/data/csse_covid_19_daily_reports/05-20-2020.csv").then(function(data) {
+    console.log(data[0]);
+  });
+}
+*/
+
 
 /*
 var Module = {
